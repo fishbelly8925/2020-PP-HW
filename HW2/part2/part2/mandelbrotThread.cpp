@@ -22,6 +22,19 @@ extern void mandelbrotSerial(
     int maxIterations,
     int output[]);
 
+static inline int mandel(float c_re, float c_im, int count){
+    float z_re = c_re, z_im = c_im;
+    int i;
+    for(i = 0; i < count; i++){
+        if(z_re * z_re + z_im * z_im > 4.f) break;
+	float new_re = z_re * z_re - z_im * z_im;
+	float new_im = 2.f * z_re * z_im;
+	z_re = c_re + new_re;
+	z_im = c_im + new_im;
+    }
+    return i;
+}
+
 //
 // workerThreadStart --
 //
@@ -37,24 +50,36 @@ void workerThreadStart(WorkerArgs *const args)
     double start = CycleTimer::currentSeconds();
     int num     = args->numThreads;
     int rank    = args->threadId;
-    //int width   = args->width;
+    int width   = args->width;
     int height  = args->height;
-    //int *output = args->output;
-    //int maxIterations = args->maxIterations;
+    int *output = args->output;
+    int maxIterations = args->maxIterations;
 
-    int totalRow = height / num;
-    int startRow = rank * totalRow;
-    int   endRow = (rank + 1) * totalRow;
-    //int   endRow = (rank + 1 != num) ? (rank + 1) * totalRow - 1: (rank + 1) * totalRow;
-
-    //float x0 = args->x0;
-    //float y0 = args->y0;
-    //float x1 = args->x1;
-    //float y1 = args->y1;
-
-    mandelbrotSerial(args->x0, args->y0, args->x1, args->y1, args->width, height, startRow, endRow - startRow, args->maxIterations, args->output);
+    //int totalRow = height / num;
+    //int startRow = rank * totalRow;
+    //int   endRow = (rank + 1) * totalRow;
+    
+    float x0 = args->x0;
+    float y0 = args->y0;
+    float x1 = args->x1;
+    float y1 = args->y1;
+    float dx = (x1 - x0) / width;
+    float dy = (y1 - y0) / height;
+    
+    /*for Q3*/
+    int index;
+    float x, y;
+    for(int j = rank; j < height; j += num){
+        for(int i = 0; i < width; i++){
+	    x = x0 + i * dx;
+	    y = y0 + j * dy;
+	    index = (j * width + i);
+	    output[index] = mandel(x, y, maxIterations);
+	}
+    }
+    //mandelbrotSerial(args->x0, args->y0, args->x1, args->y1, args->width, height, startRow, endRow - startRow, args->maxIterations, args->output);
     double end = CycleTimer::currentSeconds();
-    printf("-- [thread %d]:\t\t\t %f ms\n", rank, end - start);
+    printf("-- [thread %d]:\t\t\t %f s\n", rank, end - start);
 }
 
 //
